@@ -1,3 +1,5 @@
+# RiSoCa Social Scheduler
+
 A clean Buffer-style scheduler prototype focused on simple account connections and automatic YouTube uploads.
 
 ## Current working flow
@@ -24,6 +26,8 @@ npm install
 npm run dev
 ```
 
+## Deploy Edge Functions
+
 ```powershell
 npx supabase functions deploy youtube-auth-start --no-verify-jwt
 npx supabase functions deploy youtube-auth-callback --no-verify-jwt
@@ -32,6 +36,7 @@ npx supabase functions deploy platform-disconnect --no-verify-jwt
 npx supabase functions deploy process-scheduled-uploads --no-verify-jwt
 ```
 
+## Test worker manually
 
 ```txt
 https://oiqqdanhxmmckwpruedg.supabase.co/functions/v1/process-scheduled-uploads
