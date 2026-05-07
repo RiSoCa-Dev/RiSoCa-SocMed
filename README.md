@@ -1,5 +1,3 @@
-# RiSoCa Social Scheduler
-
 A clean Buffer-style scheduler prototype focused on simple account connections and automatic YouTube uploads.
 
 ## Current working flow
