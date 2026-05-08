@@ -1,55 +1,92 @@
-import { supabase } from './supabase';
+import { getFunctionUrl, supabase } from './supabase';
 
-export interface ScheduleYoutubeVideoInput {
+type ScheduleYoutubeVideoInput = {
   file: File;
   title: string;
-  description?: string;
+  description: string;
   scheduledAt: Date;
   privacyStatus?: 'private' | 'unlisted' | 'public';
-}
+};
 
-function safeFileName(name: string) {
-  return name
-    .replace(/[^a-zA-Z0-9._-]/g, '-')
-    .replace(/-+/g, '-')
-    .slice(0, 120);
-}
+type CreateUploadSessionResponse = {
+  uploadUrl: string;
+  scheduledPostId: string;
+};
 
-export async function scheduleYoutubeVideo(input: ScheduleYoutubeVideoInput) {
-  const privacyStatus = input.privacyStatus || 'private';
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).slice(2, 10);
-  const fileName = safeFileName(input.file.name || 'video.mp4');
-  const videoPath = `scheduled/youtube/${timestamp}-${random}-${fileName}`;
+export async function scheduleYoutubeVideo({
+  file,
+  title,
+  description,
+  scheduledAt,
+}: ScheduleYoutubeVideoInput) {
+  const publishAt = scheduledAt.toISOString();
 
-  const { error: uploadError } = await supabase.storage
-    .from('post-media')
-    .upload(videoPath, input.file, {
-      contentType: input.file.type || 'video/mp4',
-      upsert: false,
-    });
+  const sessionResponse = await fetch(
+    getFunctionUrl('youtube-create-upload-session'),
+    {
+      method: 'POST',
+      headers: {
+        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title,
+        description,
+        publishAt,
+        fileSize: file.size,
+        mimeType: file.type || 'video/mp4',
+      }),
+    }
+  );
 
-  if (uploadError) {
-    throw new Error(`Storage upload failed: ${uploadError.message}`);
+  const sessionData = (await sessionResponse.json()) as
+    | CreateUploadSessionResponse
+    | { error: string };
+
+  if (!sessionResponse.ok || 'error' in sessionData) {
+    throw new Error(
+      'Could not create YouTube upload session: ' +
+        ('error' in sessionData ? sessionData.error : sessionResponse.statusText)
+    );
   }
 
-  const { data, error: insertError } = await supabase
+  const uploadResponse = await fetch(sessionData.uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type || 'video/mp4',
+      'Content-Length': String(file.size),
+    },
+    body: file,
+  });
+
+  const uploadResult = await uploadResponse.json().catch(() => null);
+
+  if (!uploadResponse.ok) {
+    await supabase
+      .from('scheduled_posts')
+      .update({
+        status: 'failed',
+        upload_error: JSON.stringify(uploadResult),
+      })
+      .eq('id', sessionData.scheduledPostId);
+
+    throw new Error(
+      'YouTube upload failed: ' + JSON.stringify(uploadResult)
+    );
+  }
+
+  await supabase
     .from('scheduled_posts')
-    .insert({
-      platform: 'youtube',
-      title: input.title,
-      description: input.description || '',
-      video_path: videoPath,
-      scheduled_at: input.scheduledAt.toISOString(),
-      status: 'scheduled',
-      privacy_status: privacyStatus,
+    .update({
+      status: 'uploaded',
+      youtube_video_id: uploadResult?.id ?? null,
+      uploaded_at: new Date().toISOString(),
     })
-    .select('id')
-    .single();
+    .eq('id', sessionData.scheduledPostId);
 
-  if (insertError) {
-    throw new Error(`Schedule save failed: ${insertError.message}`);
-  }
-
-  return { id: data.id as string, videoPath };
+  return {
+    scheduledPostId: sessionData.scheduledPostId,
+    youtubeVideoId: uploadResult?.id,
+  };
 }
