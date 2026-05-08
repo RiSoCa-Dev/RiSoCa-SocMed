@@ -1,7 +1,5 @@
-import SchedulePost from '../components/SchedulePost';
+import BatchScheduler from './BatchScheduler';
 
-const Scheduler = () => {
-  return <SchedulePost />;
-};
-
-export default Scheduler;
+export default function Scheduler() {
+  return <BatchScheduler />;
+}
