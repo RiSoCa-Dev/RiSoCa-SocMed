@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FaCalendarAlt, FaCheckCircle, FaClock, FaExclamationTriangle, FaRocket } from 'react-icons/fa';
+import {
+  FaCalendarAlt,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaRocket,
+} from 'react-icons/fa';
+import { FiClock } from 'react-icons/fi';
 import { supabase } from '../lib/supabase';
 
 type ScheduledPost = {
@@ -19,9 +25,12 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadPosts() {
       setLoading(true);
+
       const { data } = await supabase
         .from('scheduled_posts')
-        .select('id, platform, title, scheduled_at, status, youtube_video_id, upload_error')
+        .select(
+          'id, platform, title, scheduled_at, status, youtube_video_id, upload_error'
+        )
         .order('scheduled_at', { ascending: false })
         .limit(20);
 
@@ -51,9 +60,16 @@ export default function Dashboard() {
                 <FaRocket />
                 RiSoCa Scheduler
               </p>
-              <h1 className="text-4xl font-black">Publishing Dashboard</h1>
-              <p className="mt-2 text-slate-300">Monitor your scheduled and uploaded posts.</p>
+
+              <h1 className="text-4xl font-black">
+                Publishing Dashboard
+              </h1>
+
+              <p className="mt-2 text-slate-300">
+                Monitor your scheduled and uploaded posts.
+              </p>
             </div>
+
             <a
               href="/scheduler"
               className="rounded-2xl bg-blue-600 px-5 py-3 text-center font-bold text-white hover:bg-blue-500"
@@ -64,22 +80,46 @@ export default function Dashboard() {
         </section>
 
         <section className="grid gap-4 md:grid-cols-4">
-          <StatCard icon={<FaCalendarAlt />} label="Scheduled" value={stats.scheduled} />
-          <StatCard icon={<FaCheckCircle />} label="Uploaded" value={stats.uploaded} />
-          <StatCard icon={<FaClock />} label="Processing" value={stats.processing} />
-          <StatCard icon={<FaExclamationTriangle />} label="Failed" value={stats.failed} />
+          <StatCard
+            icon={<FaCalendarAlt />}
+            label="Scheduled"
+            value={stats.scheduled}
+          />
+
+          <StatCard
+            icon={<FaCheckCircle />}
+            label="Uploaded"
+            value={stats.uploaded}
+          />
+
+          <StatCard
+            icon={<FiClock />}
+            label="Processing"
+            value={stats.processing}
+          />
+
+          <StatCard
+            icon={<FaExclamationTriangle />}
+            label="Failed"
+            value={stats.failed}
+          />
         </section>
 
         <section className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold">Recent queue</h2>
-              <p className="text-sm text-slate-400">Latest scheduled uploads from Supabase.</p>
+              <h2 className="text-xl font-bold">Recent Queue</h2>
+
+              <p className="text-sm text-slate-400">
+                Latest scheduled uploads from Supabase.
+              </p>
             </div>
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-slate-400">Loading queue...</div>
+            <div className="p-8 text-center text-slate-400">
+              Loading queue...
+            </div>
           ) : posts.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-slate-400">
               No scheduled posts yet.
@@ -95,15 +135,33 @@ export default function Dashboard() {
                     <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {posts.map((post) => (
-                    <tr key={post.id} className="border-t border-slate-800">
+                    <tr
+                      key={post.id}
+                      className="border-t border-slate-800"
+                    >
                       <td className="px-4 py-3">
-                        <p className="font-medium text-slate-100">{post.title || 'Untitled'}</p>
-                        {post.upload_error && <p className="mt-1 text-xs text-red-300">{post.upload_error}</p>}
+                        <p className="font-medium text-slate-100">
+                          {post.title || 'Untitled'}
+                        </p>
+
+                        {post.upload_error && (
+                          <p className="mt-1 text-xs text-red-300">
+                            {post.upload_error}
+                          </p>
+                        )}
                       </td>
-                      <td className="px-4 py-3 capitalize text-slate-300">{post.platform}</td>
-                      <td className="px-4 py-3 text-slate-400">{new Date(post.scheduled_at).toLocaleString()}</td>
+
+                      <td className="px-4 py-3 capitalize text-slate-300">
+                        {post.platform}
+                      </td>
+
+                      <td className="px-4 py-3 text-slate-400">
+                        {new Date(post.scheduled_at).toLocaleString()}
+                      </td>
+
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-slate-800 px-3 py-1 text-xs capitalize text-slate-200">
                           {post.status}
@@ -121,14 +179,26 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
+function StatCard({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}) {
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
       <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
         {icon}
       </div>
+
       <p className="text-3xl font-black">{value}</p>
-      <p className="mt-1 text-sm text-slate-400">{label}</p>
+
+      <p className="mt-1 text-sm text-slate-400">
+        {label}
+      </p>
     </div>
   );
 }

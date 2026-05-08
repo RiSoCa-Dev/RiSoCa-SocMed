@@ -97,9 +97,14 @@ export default function LoginPage() {
               {busy ? 'Opening Google...' : 'Continue with Google'}
             </button>
 
-            <p className="mt-6 text-center text-xs leading-5 text-slate-500">
-              By continuing, you access the private RiSoCa Scheduler dashboard.
-            </p>
+            <div className="mt-6 text-center text-xs leading-5 text-slate-500">
+              <p>By continuing, you access the private RiSoCa Scheduler dashboard.</p>
+              <div className="mt-3 flex justify-center gap-4">
+                <a className="hover:text-slate-800" href="/privacy">Privacy</a>
+                <a className="hover:text-slate-800" href="/terms">Terms</a>
+                <a className="hover:text-slate-800" href="/data-deletion">Data deletion</a>
+              </div>
+            </div>
           </div>
         </section>
       </div>

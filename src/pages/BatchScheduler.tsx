@@ -10,10 +10,10 @@ import {
   FaSpinner,
   FaYoutube,
 } from 'react-icons/fa';
-import { FaTiktok } from 'react-icons/fa6';
+import { FaTiktok, FaXTwitter, FaLinkedinIn, FaPinterestP } from 'react-icons/fa6';
 import { scheduleYoutubeVideo } from '../lib/scheduleUpload';
 
-type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok';
+type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'x' | 'linkedin' | 'pinterest';
 type PrivacyStatus = 'private' | 'unlisted' | 'public';
 
 type BatchItem = {
@@ -62,7 +62,28 @@ const platforms: Array<{
     name: 'TikTok',
     label: 'Vertical Video',
     active: false,
-    description: 'Needs API approval',
+    description: 'Needs Content Posting API approval',
+  },
+  {
+    id: 'x',
+    name: 'X',
+    label: 'Post / Video',
+    active: false,
+    description: 'Needs X developer OAuth credentials',
+  },
+  {
+    id: 'linkedin',
+    name: 'LinkedIn',
+    label: 'Professional post',
+    active: false,
+    description: 'Needs LinkedIn app approval',
+  },
+  {
+    id: 'pinterest',
+    name: 'Pinterest',
+    label: 'Idea Pin / Pin',
+    active: false,
+    description: 'Needs Pinterest app credentials',
   },
 ];
 
@@ -76,6 +97,12 @@ function platformIcon(platform: Platform) {
       return <FaInstagram />;
     case 'tiktok':
       return <FaTiktok />;
+    case 'x':
+      return <FaXTwitter />;
+    case 'linkedin':
+      return <FaLinkedinIn />;
+    case 'pinterest':
+      return <FaPinterestP />;
   }
 }
 
@@ -89,6 +116,12 @@ function platformClasses(platform: Platform) {
       return 'bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 text-white';
     case 'tiktok':
       return 'bg-black text-white';
+    case 'x':
+      return 'bg-slate-950 text-white';
+    case 'linkedin':
+      return 'bg-sky-700 text-white';
+    case 'pinterest':
+      return 'bg-red-700 text-white';
   }
 }
 

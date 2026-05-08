@@ -1,8 +1,15 @@
 import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
+import LegalPage from './pages/LegalPage';
 import { AuthProvider, useAuth } from './lib/auth';
 
 function AppContent() {
+  const path = window.location.pathname;
+
+  if (path === '/privacy') return <LegalPage type="privacy" />;
+  if (path === '/terms') return <LegalPage type="terms" />;
+  if (path === '/data-deletion') return <LegalPage type="data-deletion" />;
+
   const { user, loading } = useAuth();
 
   if (loading) {
