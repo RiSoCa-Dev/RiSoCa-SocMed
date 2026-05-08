@@ -2,15 +2,12 @@
 
 A clean Buffer-style scheduler prototype focused on simple account connections and automatic YouTube uploads.
 
-## Current working flow
-
 1. Connect YouTube from **Connections**.
 2. Upload video files from **Scheduler**.
 3. The app saves files to Supabase Storage bucket `post-media`.
 4. The app creates rows in `scheduled_posts`.
 5. The Supabase Edge Function `process-scheduled-uploads` uploads due videos to YouTube.
 
-## Local setup
 
 Create `.env` in the project root:
 
@@ -25,8 +22,6 @@ Install and run:
 npm install
 npm run dev
 ```
-
-## Deploy Edge Functions
 
 ```powershell
 npx supabase functions deploy youtube-auth-start --no-verify-jwt
