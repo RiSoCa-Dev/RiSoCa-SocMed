@@ -1,41 +1,33 @@
 /// <reference lib="deno.ns" />
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405, headers: corsHeaders });
-  }
-
-  const { platform } = await req.json().catch(() => ({ platform: null }));
-  if (!platform) {
-    return new Response("Missing platform", { status: 400, headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const { platform } = await req.json().catch(() => ({ platform: null }));
 
-  if (!supabaseUrl || !serviceRoleKey) {
-    return new Response("Missing Supabase server secrets", { status: 500, headers: corsHeaders });
+  if (!supabaseUrl || !serviceRoleKey || !platform) {
+    return new Response(JSON.stringify({ error: "Missing required parameter" }), {
+      status: 400,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
-  const { error } = await supabase.from("social_accounts").delete().eq("platform", platform);
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  if (platform === "meta") {
+    await supabase.from("social_accounts").delete().in("platform", ["meta", "facebook", "instagram"]);
+    await supabase.from("meta_pages").delete().neq("page_id", "");
+  } else {
+    await supabase.from("social_accounts").delete().eq("platform", platform);
   }
 
   return new Response(JSON.stringify({ ok: true }), {
