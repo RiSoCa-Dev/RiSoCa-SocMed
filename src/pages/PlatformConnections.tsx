@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabaseUrl, supabaseAnonKey } from "../lib/supabase";
+import { FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
+import { supabaseAnonKey, supabaseUrl } from "../lib/supabase";
 
 type Account = {
   platform: string;
@@ -44,6 +45,10 @@ export default function PlatformConnections() {
   const [loading, setLoading] = useState(true);
   const [busyPlatform, setBusyPlatform] = useState<string | null>(null);
 
+  const params = new URLSearchParams(window.location.search);
+  const connected = params.get("connected");
+  const error = params.get("error");
+
   const metaConnected = useMemo(
     () => accounts.facebook.length > 0 || accounts.instagram.length > 0,
     [accounts]
@@ -57,8 +62,8 @@ export default function PlatformConnections() {
       });
       const data = (await res.json()) as StatusResponse;
       setAccounts(data.accounts || emptyStatus);
-    } catch (error) {
-      console.error(error);
+    } catch (err) {
+      console.error(err);
       setAccounts(emptyStatus);
     } finally {
       setLoading(false);
@@ -92,19 +97,31 @@ export default function PlatformConnections() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <header>
-          <h1 className="text-3xl font-bold text-slate-900">Platform Connections</h1>
-          <p className="mt-2 text-slate-600">
-            Connect channels once, then schedule uploads from the scheduler.
-          </p>
+    <main className="min-h-screen bg-slate-950 p-6 text-white">
+      <div className="mx-auto max-w-5xl space-y-6">
+        <header className="rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 to-blue-950 p-6">
+          <h1 className="text-4xl font-black">Platform Connections</h1>
+          <p className="mt-2 text-slate-300">Connect channels once. Schedule posts anytime.</p>
         </header>
+
+        {connected && (
+          <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-100">
+            <FaCheckCircle />
+            {connected} connected successfully.
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-red-100">
+            <FaExclamationTriangle />
+            Connection failed: {error}
+          </div>
+        )}
 
         <section className="grid gap-4">
           <ConnectionCard
             title="YouTube"
-            description="Upload scheduled videos to your YouTube channel."
+            description="Auto-upload scheduled videos to your YouTube channel."
             connected={accounts.youtube.length > 0}
             details={accounts.youtube.map((a) => a.username || "YouTube channel")}
             loading={loading}
@@ -115,7 +132,7 @@ export default function PlatformConnections() {
 
           <ConnectionCard
             title="Facebook"
-            description="Publish scheduled videos to connected Facebook Pages."
+            description="Connect Facebook Pages through Meta OAuth."
             connected={accounts.facebook.length > 0}
             details={accounts.facebook.map((a) => a.username || a.platform_account_id || "Facebook Page")}
             loading={loading}
@@ -126,19 +143,23 @@ export default function PlatformConnections() {
 
           <ConnectionCard
             title="Instagram"
-            description="Publish scheduled videos/Reels to linked professional Instagram accounts."
+            description="Connect professional Instagram accounts linked to your Page."
             connected={accounts.instagram.length > 0}
             details={accounts.instagram.map((a) => a.username || a.platform_account_id || "Instagram account")}
             loading={loading}
             onConnect={() => connectMeta("instagram")}
             onDisconnect={() => disconnect("meta")}
             busy={busyPlatform === "meta"}
-            helper={!accounts.instagram.length && metaConnected ? "No linked Instagram professional account found. Link Instagram to your Facebook Page, then reconnect Meta." : undefined}
+            helper={
+              !accounts.instagram.length && metaConnected
+                ? "No linked Instagram professional account found. Link Instagram to your Facebook Page, then reconnect."
+                : undefined
+            }
           />
 
           <ConnectionCard
             title="TikTok"
-            description="TikTok connection will be added after Content Posting API access is approved."
+            description="TikTok will be enabled after Content Posting API approval."
             connected={accounts.tiktok.length > 0}
             details={accounts.tiktok.map((a) => a.username || "TikTok account")}
             loading={loading}
@@ -174,39 +195,47 @@ function ConnectionCard({
   onDisconnect: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5 shadow-xl">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
-            <span className={`rounded-full px-3 py-1 text-xs font-medium ${connected ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
+            <h2 className="text-xl font-bold">{title}</h2>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              connected ? "bg-emerald-500/20 text-emerald-200" : "bg-slate-800 text-slate-300"
+            }`}>
               {loading ? "Checking..." : connected ? "Connected" : "Not connected"}
             </span>
           </div>
-          <p className="mt-1 text-sm text-slate-600">{description}</p>
+          <p className="mt-1 text-sm text-slate-400">{description}</p>
           {connected && details.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {details.map((detail) => (
-                <span key={detail} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs text-slate-700">
+                <span key={detail} className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
                   {detail}
                 </span>
               ))}
             </div>
           )}
-          {helper && <p className="mt-3 text-sm text-amber-700">{helper}</p>}
+          {helper && <p className="mt-3 text-sm text-amber-300">{helper}</p>}
         </div>
 
-        <div className="flex gap-2">
-          {connected ? (
-            <button onClick={onDisconnect} disabled={busy} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60">
-              {busy ? "Disconnecting..." : "Disconnect"}
-            </button>
-          ) : (
-            <button onClick={onConnect} disabled={loading || busy} className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60">
-              Connect {title}
-            </button>
-          )}
-        </div>
+        {connected ? (
+          <button
+            onClick={onDisconnect}
+            disabled={busy}
+            className="rounded-2xl border border-slate-700 px-5 py-3 text-sm font-bold text-slate-200 hover:bg-slate-800 disabled:opacity-60"
+          >
+            {busy ? "Disconnecting..." : "Disconnect"}
+          </button>
+        ) : (
+          <button
+            onClick={onConnect}
+            disabled={loading || busy}
+            className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-500 disabled:opacity-60"
+          >
+            Connect {title}
+          </button>
+        )}
       </div>
     </div>
   );

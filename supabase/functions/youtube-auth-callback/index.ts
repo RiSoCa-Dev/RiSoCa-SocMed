@@ -6,19 +6,14 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
-
   const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
 
   if (error) {
-    return html(`
-      <h2>YouTube connection failed</h2>
-      <p>Google returned: ${escapeHtml(error)}</p>
-      <a href="${appUrl}/connections">Back to Platform Connections</a>
-    `, 400);
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(error)}`, 302);
   }
 
   if (!code) {
-    return new Response("Missing OAuth code", { status: 400 });
+    return Response.redirect(`${appUrl}/connections?error=missing_oauth_code`, 302);
   }
 
   const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -27,11 +22,10 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!clientId || !clientSecret || !supabaseUrl || !serviceRoleKey) {
-    return new Response("Missing required Edge Function secrets", { status: 500 });
+    return Response.redirect(`${appUrl}/connections?error=missing_edge_function_secrets`, 302);
   }
 
-  const redirectUri =
-    "https://oiqqdanhxmmckwpruedg.supabase.co/functions/v1/youtube-auth-callback";
+  const redirectUri = "https://oiqqdanhxmmckwpruedg.supabase.co/functions/v1/youtube-auth-callback";
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -50,10 +44,7 @@ Deno.serve(async (req) => {
   const tokenData = await tokenRes.json();
 
   if (!tokenRes.ok) {
-    return new Response(JSON.stringify(tokenData, null, 2), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(tokenData.error || "google_token_failed")}`, 302);
   }
 
   const expiresAt = tokenData.expires_in
@@ -76,46 +67,8 @@ Deno.serve(async (req) => {
   );
 
   if (saveError) {
-    return new Response(JSON.stringify({ error: saveError.message }, null, 2), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(saveError.message)}`, 302);
   }
 
-  return html(`
-    <h2>YouTube Connected</h2>
-    <p>OAuth succeeded. The YouTube refresh token was saved to Supabase for automated uploads.</p>
-    <pre>${escapeHtml(JSON.stringify({
-      platform: "youtube",
-      saved: true,
-      has_access_token: Boolean(tokenData.access_token),
-      has_refresh_token: Boolean(tokenData.refresh_token),
-      expires_in: tokenData.expires_in,
-      scope: tokenData.scope,
-      token_type: tokenData.token_type,
-    }, null, 2))}</pre>
-    <a href="${appUrl}/connections">Back to Platform Connections</a>
-  `);
+  return Response.redirect(`${appUrl}/connections?connected=youtube`, 302);
 });
-
-function html(body: string, status = 200) {
-  return new Response(`
-    <html>
-      <body style="font-family: sans-serif; padding: 24px; line-height: 1.5;">
-        ${body}
-      </body>
-    </html>
-  `, {
-    status,
-    headers: { "Content-Type": "text/html" },
-  });
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}

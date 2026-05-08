@@ -4,9 +4,16 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
+  const error = url.searchParams.get("error");
   const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
 
-  if (!code) return new Response("Missing OAuth code", { status: 400 });
+  if (error) {
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(error)}`, 302);
+  }
+
+  if (!code) {
+    return Response.redirect(`${appUrl}/connections?error=missing_oauth_code`, 302);
+  }
 
   const appId = Deno.env.get("META_APP_ID");
   const appSecret = Deno.env.get("META_APP_SECRET");
@@ -14,7 +21,7 @@ Deno.serve(async (req) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!appId || !appSecret || !supabaseUrl || !serviceRoleKey) {
-    return new Response("Missing required environment secrets", { status: 500 });
+    return Response.redirect(`${appUrl}/connections?error=missing_meta_secrets`, 302);
   }
 
   const redirectUri = "https://oiqqdanhxmmckwpruedg.supabase.co/functions/v1/meta-auth-callback";
@@ -28,7 +35,10 @@ Deno.serve(async (req) => {
     }).toString()}`
   );
   const shortTokenData = await shortTokenRes.json();
-  if (!shortTokenRes.ok) return jsonError("Short token exchange failed", shortTokenData);
+
+  if (!shortTokenRes.ok) {
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(shortTokenData.error?.message || "meta_token_failed")}`, 302);
+  }
 
   const longTokenRes = await fetch(
     `https://graph.facebook.com/v25.0/oauth/access_token?${new URLSearchParams({
@@ -39,7 +49,10 @@ Deno.serve(async (req) => {
     }).toString()}`
   );
   const longTokenData = await longTokenRes.json();
-  if (!longTokenRes.ok) return jsonError("Long token exchange failed", longTokenData);
+
+  if (!longTokenRes.ok) {
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(longTokenData.error?.message || "meta_long_token_failed")}`, 302);
+  }
 
   const userAccessToken = longTokenData.access_token || shortTokenData.access_token;
 
@@ -47,7 +60,10 @@ Deno.serve(async (req) => {
     `https://graph.facebook.com/v25.0/me/accounts?fields=id,name,access_token,instagram_business_account{id,username,name}&access_token=${encodeURIComponent(userAccessToken)}`
   );
   const pagesData = await pagesRes.json();
-  if (!pagesRes.ok) return jsonError("Fetching pages failed", pagesData);
+
+  if (!pagesRes.ok) {
+    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(pagesData.error?.message || "meta_pages_failed")}`, 302);
+  }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
   const pages = Array.isArray(pagesData.data) ? pagesData.data : [];
@@ -123,24 +139,6 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(
-    `<html><body style="font-family:sans-serif;padding:24px;line-height:1.5">
-      <h2>Meta Connected</h2>
-      <p>Facebook Pages were saved. Linked Instagram professional accounts were saved too.</p>
-      <pre>${escapeHtml(JSON.stringify({ saved_pages: pages.length, saved_instagram_accounts: instagramCount }, null, 2))}</pre>
-      <a href="${appUrl}/connections">Back to Platform Connections</a>
-    </body></html>`,
-    { status: 200, headers: { "Content-Type": "text/html" } }
-  );
+  const connected = instagramCount > 0 ? "facebook-instagram" : "facebook";
+  return Response.redirect(`${appUrl}/connections?connected=${connected}`, 302);
 });
-
-function jsonError(message: string, details: unknown) {
-  return new Response(JSON.stringify({ error: message, details }, null, 2), {
-    status: 500,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function escapeHtml(value: string) {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-}
