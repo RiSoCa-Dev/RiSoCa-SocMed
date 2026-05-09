@@ -5,6 +5,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
+  const state = url.searchParams.get("state");
   const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
 
   if (error) {
@@ -13,6 +14,10 @@ Deno.serve(async (req) => {
 
   if (!code) {
     return Response.redirect(`${appUrl}/connections?error=missing_oauth_code`, 302);
+  }
+
+  if (!state) {
+    return Response.redirect(`${appUrl}/connections?error=missing_oauth_state`, 302);
   }
 
   const appId = Deno.env.get("META_APP_ID");
@@ -25,6 +30,23 @@ Deno.serve(async (req) => {
   }
 
   const redirectUri = "https://oiqqdanhxmmckwpruedg.supabase.co/functions/v1/meta-auth-callback";
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data: oauthState, error: stateError } = await supabase
+    .from("oauth_states")
+    .select("id, expires_at, used_at")
+    .eq("state", state)
+    .eq("provider", "meta")
+    .single();
+
+  if (
+    stateError ||
+    !oauthState ||
+    oauthState.used_at ||
+    new Date(oauthState.expires_at).getTime() < Date.now()
+  ) {
+    return Response.redirect(`${appUrl}/connections?error=invalid_or_expired_oauth_state`, 302);
+  }
 
   const shortTokenRes = await fetch(
     `https://graph.facebook.com/v25.0/oauth/access_token?${new URLSearchParams({
@@ -65,7 +87,6 @@ Deno.serve(async (req) => {
     return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(pagesData.error?.message || "meta_pages_failed")}`, 302);
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
   const pages = Array.isArray(pagesData.data) ? pagesData.data : [];
   const nowIso = new Date().toISOString();
   const expiresAt = longTokenData.expires_in
@@ -140,5 +161,10 @@ Deno.serve(async (req) => {
   }
 
   const connected = instagramCount > 0 ? "facebook-instagram" : "facebook";
+  await supabase
+    .from("oauth_states")
+    .update({ used_at: new Date().toISOString() })
+    .eq("id", oauthState.id);
+
   return Response.redirect(`${appUrl}/connections?connected=${connected}`, 302);
 });

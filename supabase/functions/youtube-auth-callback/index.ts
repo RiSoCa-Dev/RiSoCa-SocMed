@@ -6,6 +6,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");
+  const state = url.searchParams.get("state");
   const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
 
   if (error) {
@@ -14,6 +15,10 @@ Deno.serve(async (req) => {
 
   if (!code) {
     return Response.redirect(`${appUrl}/connections?error=missing_oauth_code`, 302);
+  }
+
+  if (!state) {
+    return Response.redirect(`${appUrl}/connections?error=missing_oauth_state`, 302);
   }
 
   const clientId = Deno.env.get("GOOGLE_CLIENT_ID");
@@ -26,6 +31,23 @@ Deno.serve(async (req) => {
   }
 
   const redirectUri = "https://oiqqdanhxmmckwpruedg.supabase.co/functions/v1/youtube-auth-callback";
+  const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+  const { data: oauthState, error: stateError } = await supabase
+    .from("oauth_states")
+    .select("id, expires_at, used_at")
+    .eq("state", state)
+    .eq("provider", "youtube")
+    .single();
+
+  if (
+    stateError ||
+    !oauthState ||
+    oauthState.used_at ||
+    new Date(oauthState.expires_at).getTime() < Date.now()
+  ) {
+    return Response.redirect(`${appUrl}/connections?error=invalid_or_expired_oauth_state`, 302);
+  }
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -51,8 +73,6 @@ Deno.serve(async (req) => {
     ? new Date(Date.now() + Number(tokenData.expires_in) * 1000).toISOString()
     : null;
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
-
   const { error: saveError } = await supabase.from("social_accounts").upsert(
     {
       platform: "youtube",
@@ -69,6 +89,11 @@ Deno.serve(async (req) => {
   if (saveError) {
     return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(saveError.message)}`, 302);
   }
+
+  await supabase
+    .from("oauth_states")
+    .update({ used_at: new Date().toISOString() })
+    .eq("id", oauthState.id);
 
   return Response.redirect(`${appUrl}/connections?connected=youtube`, 302);
 });

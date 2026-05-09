@@ -7,7 +7,8 @@ import {
   FaRocket,
 } from 'react-icons/fa';
 import { FiClock } from 'react-icons/fi';
-import { supabase } from '../lib/supabase';
+import { getOwnerFunctionHeaders } from '../lib/functionAuth';
+import { getFunctionUrl } from '../lib/supabase';
 import { platforms, platformMap, type PlatformKey } from '../lib/platforms';
 import { Badge, Button, Card, EmptyState, PageHeader, StatCard } from '../components/ui';
 
@@ -17,9 +18,13 @@ type ScheduledPost = {
   title: string | null;
   scheduled_at: string;
   status: string;
+  privacy_status: string | null;
+  selected_platforms?: string[] | null;
   youtube_video_id: string | null;
   upload_error: string | null;
 };
+
+type ScheduledPostsResponse = { posts: ScheduledPost[] } | { error: string };
 
 export default function Dashboard() {
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
@@ -29,15 +34,21 @@ export default function Dashboard() {
     async function loadPosts() {
       setLoading(true);
 
-      const { data } = await supabase
-        .from('scheduled_posts')
-        .select(
-          'id, platform, title, scheduled_at, status, youtube_video_id, upload_error'
-        )
-        .order('scheduled_at', { ascending: false })
-        .limit(20);
+      try {
+        const headers = await getOwnerFunctionHeaders();
+        const response = await fetch(getFunctionUrl('scheduled-posts-list'), { headers });
+        const data = (await response.json()) as ScheduledPostsResponse;
 
-      setPosts((data || []) as ScheduledPost[]);
+        if (!response.ok || 'error' in data) {
+          throw new Error('error' in data ? data.error : 'Could not load queue');
+        }
+
+        setPosts(data.posts);
+      } catch (error) {
+        console.error(error);
+        setPosts([]);
+      }
+
       setLoading(false);
     }
 
@@ -113,6 +124,7 @@ export default function Dashboard() {
                         <tr key={post.id} className="border-t border-slate-800/80">
                           <td className="px-4 py-3">
                             <p className="font-semibold text-slate-100">{post.title || 'Untitled'}</p>
+                            {post.privacy_status && <p className="mt-1 text-xs text-slate-500">Privacy: {post.privacy_status}</p>}
                             {post.upload_error && <p className="mt-1 text-xs text-red-300">{post.upload_error}</p>}
                           </td>
                           <td className="px-4 py-3 text-slate-300">{platform?.name || post.platform}</td>

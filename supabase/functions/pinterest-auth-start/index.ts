@@ -1,11 +1,17 @@
 /// <reference lib="deno.ns" />
+import { corsHeaders, json, requireOwner } from "../_shared/ownerAuth.ts";
 
-Deno.serve(async () => {
-  const appUrl = Deno.env.get("APP_URL") || "http://localhost:5173";
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+
+  const owner = await requireOwner(req);
+  if ("error" in owner) return owner.error;
+
   const required = ["PINTEREST_CLIENT_ID", "PINTEREST_CLIENT_SECRET"];
   const missing = required.filter((key) => !Deno.env.get(key));
   if (missing.length) {
-    return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent(`Missing ${missing.join(", ")}. Add developer credentials before connecting this platform.`)}`, 302);
+    return json({ error: `Missing ${missing.join(", ")}. Add developer credentials before connecting this platform.` }, 400);
   }
-  return Response.redirect(`${appUrl}/connections?error=${encodeURIComponent("OAuth scaffold exists. Callback and publishing implementation must be enabled after platform app approval.")}`, 302);
+  return json({ error: "OAuth scaffold exists. Callback and publishing implementation must be enabled after platform app approval." }, 400);
 });

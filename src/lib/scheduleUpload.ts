@@ -1,4 +1,5 @@
-import { getFunctionUrl, supabase } from './supabase';
+import { getFunctionUrl } from './supabase';
+import { getOwnerFunctionHeaders } from './functionAuth';
 
 type ScheduleYoutubeVideoInput = {
   file: File;
@@ -18,24 +19,23 @@ export async function scheduleYoutubeVideo({
   title,
   description,
   scheduledAt,
+  privacyStatus = 'private',
 }: ScheduleYoutubeVideoInput) {
   const publishAt = scheduledAt.toISOString();
+  const headers = await getOwnerFunctionHeaders();
 
   const sessionResponse = await fetch(
     getFunctionUrl('youtube-create-upload-session'),
     {
       method: 'POST',
-      headers: {
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         title,
         description,
         publishAt,
         fileSize: file.size,
         mimeType: file.type || 'video/mp4',
+        privacyStatus,
       }),
     }
   );
@@ -63,30 +63,64 @@ export async function scheduleYoutubeVideo({
   const uploadResult = await uploadResponse.json().catch(() => null);
 
   if (!uploadResponse.ok) {
-    await supabase
-      .from('scheduled_posts')
-      .update({
-        status: 'failed',
-        upload_error: JSON.stringify(uploadResult),
-      })
-      .eq('id', sessionData.scheduledPostId);
+    await completeYoutubeUpload({
+      headers,
+      scheduledPostId: sessionData.scheduledPostId,
+      ok: false,
+      error: uploadResult,
+      privacyStatus,
+    });
 
     throw new Error(
       'YouTube upload failed: ' + JSON.stringify(uploadResult)
     );
   }
 
-  await supabase
-    .from('scheduled_posts')
-    .update({
-      status: 'uploaded',
-      youtube_video_id: uploadResult?.id ?? null,
-      uploaded_at: new Date().toISOString(),
-    })
-    .eq('id', sessionData.scheduledPostId);
+  await completeYoutubeUpload({
+    headers,
+    scheduledPostId: sessionData.scheduledPostId,
+    ok: true,
+    youtubeVideoId: uploadResult?.id ?? null,
+    privacyStatus,
+  });
 
   return {
     scheduledPostId: sessionData.scheduledPostId,
     youtubeVideoId: uploadResult?.id,
   };
+}
+
+async function completeYoutubeUpload({
+  headers,
+  scheduledPostId,
+  ok,
+  youtubeVideoId,
+  error,
+  privacyStatus,
+}: {
+  headers: HeadersInit;
+  scheduledPostId: string;
+  ok: boolean;
+  youtubeVideoId?: string | null;
+  error?: unknown;
+  privacyStatus: 'private' | 'unlisted' | 'public';
+}) {
+  const response = await fetch(getFunctionUrl('youtube-complete-upload'), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      scheduledPostId,
+      ok,
+      youtubeVideoId,
+      error,
+      privacyStatus,
+    }),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new Error(
+      'Could not update upload status: ' + JSON.stringify(data)
+    );
+  }
 }

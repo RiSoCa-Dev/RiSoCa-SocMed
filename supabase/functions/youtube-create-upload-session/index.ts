@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, json, requireOwner } from "../_shared/ownerAuth.ts";
 
 type RequestBody = {
   title: string;
@@ -8,6 +8,7 @@ type RequestBody = {
   publishAt: string;
   fileSize: number;
   mimeType: string;
+  privacyStatus?: "private" | "unlisted" | "public";
 };
 
 Deno.serve(async (req) => {
@@ -20,6 +21,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
   }
+
+  const owner = await requireOwner(req);
+  if ("error" in owner) return owner.error;
 
   const body = (await req.json().catch(() => null)) as RequestBody | null;
 
@@ -52,22 +56,19 @@ Deno.serve(async (req) => {
     );
   }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
   const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
-
-  if (!supabaseUrl || !serviceRoleKey) {
-    return json({ error: "Missing Supabase Edge Function secrets" }, 500);
-  }
+  const privacyStatus = body.privacyStatus || "private";
 
   if (!googleClientId || !googleClientSecret) {
     return json({ error: "Missing Google OAuth secrets" }, 500);
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+  if (!["private", "unlisted", "public"].includes(privacyStatus)) {
+    return json({ error: "Invalid privacyStatus" }, 400);
+  }
 
-  const { data: youtubeAccount, error: accountError } = await supabase
+  const { data: youtubeAccount, error: accountError } = await owner.admin
     .from("social_accounts")
     .select("refresh_token")
     .eq("platform", "youtube")
@@ -89,16 +90,17 @@ Deno.serve(async (req) => {
     refreshToken: youtubeAccount.refresh_token,
   });
 
-  const { data: scheduledPost, error: insertError } = await supabase
+  const { data: scheduledPost, error: insertError } = await owner.admin
     .from("scheduled_posts")
     .insert({
       platform: "youtube",
+      selected_platforms: ["youtube"],
       title: body.title.trim(),
       description: body.description || "",
       video_path: `youtube-direct-upload:${crypto.randomUUID()}`,
       scheduled_at: publishDate.toISOString(),
       status: "uploading",
-      privacy_status: "private",
+      privacy_status: privacyStatus,
       upload_error: null,
     })
     .select("id")
@@ -121,7 +123,7 @@ Deno.serve(async (req) => {
       description: body.description || "",
     },
     status: {
-      privacyStatus: "private",
+      privacyStatus,
       publishAt: publishDate.toISOString(),
       selfDeclaredMadeForKids: false,
     },
@@ -144,7 +146,7 @@ Deno.serve(async (req) => {
   if (!uploadSessionRes.ok) {
     const errorText = await uploadSessionRes.text();
 
-    await supabase
+    await owner.admin
       .from("scheduled_posts")
       .update({
         status: "failed",
@@ -207,20 +209,3 @@ async function refreshGoogleAccessToken({
 
   return data.access_token as string;
 }
-
-function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/json",
-    },
-  });
-}
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};

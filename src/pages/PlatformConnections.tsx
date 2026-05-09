@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { FaCheckCircle, FaExclamationTriangle, FaLock } from "react-icons/fa";
-import { supabaseAnonKey, supabaseUrl } from "../lib/supabase";
+import { supabaseUrl } from "../lib/supabase";
+import { getOwnerFunctionHeaders } from "../lib/functionAuth";
 import { platforms, platformStatusLabel, type PlatformConfig, type PlatformKey } from "../lib/platforms";
 import { Badge, Button, Card, PageHeader } from "../components/ui";
 
@@ -13,16 +14,13 @@ type Account = {
 };
 
 type StatusResponse = { accounts: Record<PlatformKey, Account[]> };
+type OAuthStartResponse = { url: string } | { error: string };
 
 const emptyStatus: StatusResponse["accounts"] = {
   youtube: [], facebook: [], instagram: [], tiktok: [], x: [], linkedin: [], pinterest: [],
 };
 
 function functionUrl(name: string) { return `${supabaseUrl}/functions/v1/${name}`; }
-
-function getHeaders(): HeadersInit {
-  return supabaseAnonKey ? { apikey: supabaseAnonKey, Authorization: `Bearer ${supabaseAnonKey}`, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
-}
 
 export default function PlatformConnections() {
   const [accounts, setAccounts] = useState<StatusResponse["accounts"]>(emptyStatus);
@@ -36,7 +34,8 @@ export default function PlatformConnections() {
   async function loadStatus() {
     setLoading(true);
     try {
-      const res = await fetch(functionUrl("platform-connections-status"), { headers: getHeaders() });
+      const headers = await getOwnerFunctionHeaders();
+      const res = await fetch(functionUrl("platform-connections-status"), { headers });
       const data = (await res.json()) as Partial<StatusResponse>;
       setAccounts({ ...emptyStatus, ...(data.accounts || {}) });
     } catch (err) {
@@ -49,12 +48,32 @@ export default function PlatformConnections() {
 
   useEffect(() => { void loadStatus(); }, []);
 
-  function connect(startFunction: string) { window.location.href = functionUrl(startFunction); }
+  async function connect(startFunction: string) {
+    setBusyPlatform(startFunction);
+
+    try {
+      const headers = await getOwnerFunctionHeaders();
+      const res = await fetch(functionUrl(startFunction), { method: "POST", headers });
+      const data = (await res.json()) as OAuthStartResponse;
+
+      if (!res.ok || "error" in data) {
+        throw new Error("error" in data ? data.error : "Could not start OAuth connection");
+      }
+
+      window.location.href = data.url;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not start OAuth connection";
+      window.location.href = `/connections?error=${encodeURIComponent(message)}`;
+    } finally {
+      setBusyPlatform(null);
+    }
+  }
 
   async function disconnect(platform: string) {
     setBusyPlatform(platform);
     try {
-      await fetch(functionUrl("platform-disconnect"), { method: "POST", headers: getHeaders(), body: JSON.stringify({ platform }) });
+      const headers = await getOwnerFunctionHeaders();
+      await fetch(functionUrl("platform-disconnect"), { method: "POST", headers, body: JSON.stringify({ platform }) });
       await loadStatus();
     } finally {
       setBusyPlatform(null);
