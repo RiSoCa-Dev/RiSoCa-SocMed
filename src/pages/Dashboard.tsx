@@ -3,10 +3,13 @@ import {
   FaCalendarAlt,
   FaCheckCircle,
   FaExclamationTriangle,
+  FaPlug,
   FaRocket,
 } from 'react-icons/fa';
 import { FiClock } from 'react-icons/fi';
 import { supabase } from '../lib/supabase';
+import { platforms, platformMap, type PlatformKey } from '../lib/platforms';
+import { Badge, Button, Card, EmptyState, PageHeader, StatCard } from '../components/ui';
 
 type ScheduledPost = {
   id: string;
@@ -51,154 +54,112 @@ export default function Dashboard() {
   }, [posts]);
 
   return (
-    <main className="min-h-screen bg-slate-950 p-6 text-white">
+    <main className="min-h-screen p-4 text-white sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 to-blue-950 p-6">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-            <div>
-              <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-500/10 px-3 py-1 text-sm text-blue-200">
-                <FaRocket />
-                RiSoCa Scheduler
-              </p>
-
-              <h1 className="text-4xl font-black">
-                Publishing Dashboard
-              </h1>
-
-              <p className="mt-2 text-slate-300">
-                Monitor your scheduled and uploaded posts.
-              </p>
-            </div>
-
-            <a
-              href="/scheduler"
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-center font-bold text-white hover:bg-blue-500"
-            >
+        <PageHeader
+          eyebrow={<Badge tone="primary"><FaRocket />Private Control Room</Badge>}
+          title="Publishing Dashboard"
+          description="Monitor your upcoming queue, publishing health, and platform readiness from your private workspace."
+          action={(
+            <Button type="button" className="min-w-36" onClick={() => window.location.assign('/scheduler')}>
               Create Post
-            </a>
-          </div>
-        </section>
+            </Button>
+          )}
+        />
 
         <section className="grid gap-4 md:grid-cols-4">
-          <StatCard
-            icon={<FaCalendarAlt />}
-            label="Scheduled"
-            value={stats.scheduled}
-          />
-
-          <StatCard
-            icon={<FaCheckCircle />}
-            label="Uploaded"
-            value={stats.uploaded}
-          />
-
-          <StatCard
-            icon={<FiClock />}
-            label="Processing"
-            value={stats.processing}
-          />
-
-          <StatCard
-            icon={<FaExclamationTriangle />}
-            label="Failed"
-            value={stats.failed}
-          />
+          <StatCard icon={<FaCalendarAlt />} label="Scheduled" value={stats.scheduled} helper="Waiting for publish time" />
+          <StatCard icon={<FaCheckCircle />} label="Uploaded" value={stats.uploaded} helper="Completed uploads" tone="success" />
+          <StatCard icon={<FiClock />} label="Processing" value={stats.processing} helper="Worker in progress" />
+          <StatCard icon={<FaExclamationTriangle />} label="Failed" value={stats.failed} helper="Needs review" tone="danger" />
         </section>
 
-        <section className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-bold">Recent Queue</h2>
-
-              <p className="text-sm text-slate-400">
-                Latest scheduled uploads from Supabase.
-              </p>
+        <section className="grid gap-6 xl:grid-cols-[1fr_360px]">
+          <Card>
+            <div className="mb-5 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+              <div>
+                <h2 className="text-xl font-black">Recent Queue</h2>
+                <p className="text-sm text-slate-400">Latest scheduled uploads from Supabase.</p>
+              </div>
+              <Button type="button" variant="secondary" onClick={() => window.location.assign('/scheduler')}>
+              Create Post
+              </Button>
             </div>
-          </div>
 
-          {loading ? (
-            <div className="p-8 text-center text-slate-400">
-              Loading queue...
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-700 p-8 text-center text-slate-400">
-              No scheduled posts yet.
-            </div>
-          ) : (
-            <div className="overflow-hidden rounded-2xl border border-slate-800">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-950 text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3">Title</th>
-                    <th className="px-4 py-3">Platform</th>
-                    <th className="px-4 py-3">Schedule</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {posts.map((post) => (
-                    <tr
-                      key={post.id}
-                      className="border-t border-slate-800"
-                    >
-                      <td className="px-4 py-3">
-                        <p className="font-medium text-slate-100">
-                          {post.title || 'Untitled'}
-                        </p>
-
-                        {post.upload_error && (
-                          <p className="mt-1 text-xs text-red-300">
-                            {post.upload_error}
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 capitalize text-slate-300">
-                        {post.platform}
-                      </td>
-
-                      <td className="px-4 py-3 text-slate-400">
-                        {new Date(post.scheduled_at).toLocaleString()}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span className="rounded-full bg-slate-800 px-3 py-1 text-xs capitalize text-slate-200">
-                          {post.status}
-                        </span>
-                      </td>
+            {loading ? (
+              <div className="p-8 text-center text-slate-400">Loading queue...</div>
+            ) : posts.length === 0 ? (
+              <EmptyState
+                icon={<FaCalendarAlt />}
+                title="No scheduled posts yet"
+                description="Upload your first video and keep it private, unlisted, or ready for publishing."
+              />
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-slate-800">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-950/80 text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3">Title</th>
+                      <th className="px-4 py-3">Platform</th>
+                      <th className="px-4 py-3">Schedule</th>
+                      <th className="px-4 py-3">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {posts.map((post) => {
+                      const platform = platformMap[post.platform as PlatformKey];
+                      return (
+                        <tr key={post.id} className="border-t border-slate-800/80">
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-100">{post.title || 'Untitled'}</p>
+                            {post.upload_error && <p className="mt-1 text-xs text-red-300">{post.upload_error}</p>}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">{platform?.name || post.platform}</td>
+                          <td className="px-4 py-3 text-slate-400">{new Date(post.scheduled_at).toLocaleString()}</td>
+                          <td className="px-4 py-3"><StatusBadge status={post.status} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/15 text-blue-200">
+                <FaPlug />
+              </div>
+              <div>
+                <h2 className="text-xl font-black">Platform Readiness</h2>
+                <p className="text-sm text-slate-400">All channels in one place.</p>
+              </div>
             </div>
-          )}
+
+            <div className="space-y-3">
+              {platforms.map((platform) => (
+                <div key={platform.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/60 p-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${platform.iconClassName}`}>{platform.icon}</span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-slate-100">{platform.name}</p>
+                      <p className="truncate text-xs text-slate-500">{platform.schedulerSummary}</p>
+                    </div>
+                  </div>
+                  <Badge tone={platform.canAutoPublish ? 'success' : 'warning'}>{platform.canAutoPublish ? 'Live' : 'Pending'}</Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
         </section>
       </div>
     </main>
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-300">
-        {icon}
-      </div>
-
-      <p className="text-3xl font-black">{value}</p>
-
-      <p className="mt-1 text-sm text-slate-400">
-        {label}
-      </p>
-    </div>
-  );
+function StatusBadge({ status }: { status: string }) {
+  const tone = status === 'uploaded' ? 'success' : status === 'failed' ? 'danger' : status === 'processing' ? 'primary' : 'default';
+  return <Badge tone={tone} className="capitalize">{status}</Badge>;
 }

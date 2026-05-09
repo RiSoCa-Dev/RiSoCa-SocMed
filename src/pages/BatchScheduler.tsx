@@ -3,17 +3,15 @@ import {
   FaCalendarAlt,
   FaCloudUploadAlt,
   FaExclamationTriangle,
-  FaFacebookF,
-  FaInstagram,
   FaPlay,
   FaRocket,
   FaSpinner,
-  FaYoutube,
 } from 'react-icons/fa';
-import { FaTiktok, FaXTwitter, FaLinkedinIn, FaPinterestP } from 'react-icons/fa6';
 import { scheduleYoutubeVideo } from '../lib/scheduleUpload';
+import { platformMap, platforms, type PlatformKey } from '../lib/platforms';
+import { Badge, Button, Card, EmptyState, Field, Input, PageHeader, Select, Textarea } from '../components/ui';
 
-type Platform = 'youtube' | 'facebook' | 'instagram' | 'tiktok' | 'x' | 'linkedin' | 'pinterest';
+type Platform = PlatformKey;
 type PrivacyStatus = 'private' | 'unlisted' | 'public';
 
 type BatchItem = {
@@ -28,102 +26,6 @@ type BatchItem = {
   status: 'draft' | 'uploading' | 'scheduled' | 'error';
   error?: string;
 };
-
-const platforms: Array<{
-  id: Platform;
-  name: string;
-  label: string;
-  active: boolean;
-  description: string;
-}> = [
-  {
-    id: 'youtube',
-    name: 'YouTube',
-    label: 'Shorts / Video',
-    active: true,
-    description: 'Auto-upload enabled',
-  },
-  {
-    id: 'facebook',
-    name: 'Facebook',
-    label: 'Page Video',
-    active: false,
-    description: 'Connection ready, upload worker next',
-  },
-  {
-    id: 'instagram',
-    name: 'Instagram',
-    label: 'Reels',
-    active: false,
-    description: 'Professional account preview',
-  },
-  {
-    id: 'tiktok',
-    name: 'TikTok',
-    label: 'Vertical Video',
-    active: false,
-    description: 'Needs Content Posting API approval',
-  },
-  {
-    id: 'x',
-    name: 'X',
-    label: 'Post / Video',
-    active: false,
-    description: 'Needs X developer OAuth credentials',
-  },
-  {
-    id: 'linkedin',
-    name: 'LinkedIn',
-    label: 'Professional post',
-    active: false,
-    description: 'Needs LinkedIn app approval',
-  },
-  {
-    id: 'pinterest',
-    name: 'Pinterest',
-    label: 'Idea Pin / Pin',
-    active: false,
-    description: 'Needs Pinterest app credentials',
-  },
-];
-
-function platformIcon(platform: Platform) {
-  switch (platform) {
-    case 'youtube':
-      return <FaYoutube />;
-    case 'facebook':
-      return <FaFacebookF />;
-    case 'instagram':
-      return <FaInstagram />;
-    case 'tiktok':
-      return <FaTiktok />;
-    case 'x':
-      return <FaXTwitter />;
-    case 'linkedin':
-      return <FaLinkedinIn />;
-    case 'pinterest':
-      return <FaPinterestP />;
-  }
-}
-
-function platformClasses(platform: Platform) {
-  switch (platform) {
-    case 'youtube':
-      return 'bg-red-600 text-white';
-    case 'facebook':
-      return 'bg-blue-600 text-white';
-    case 'instagram':
-      return 'bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 text-white';
-    case 'tiktok':
-      return 'bg-black text-white';
-    case 'x':
-      return 'bg-slate-950 text-white';
-    case 'linkedin':
-      return 'bg-sky-700 text-white';
-    case 'pinterest':
-      return 'bg-red-700 text-white';
-  }
-}
 
 function defaultScheduleDate() {
   const date = new Date(Date.now() + 10 * 60 * 1000);
@@ -215,7 +117,7 @@ export default function BatchScheduler() {
 
   async function scheduleOne(item: BatchItem) {
     if (!item.selectedPlatforms.includes('youtube')) {
-      throw new Error('Only YouTube auto-upload is active right now. Facebook and Instagram preview is ready; upload workers are next.');
+      throw new Error('Only YouTube auto-upload is live right now. Other platforms are prepared for previews and credential setup.');
     }
 
     if (!item.title.trim()) throw new Error('Title is required.');
@@ -293,21 +195,13 @@ export default function BatchScheduler() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 p-6 text-white">
+    <main className="min-h-screen p-4 text-white sm:p-6">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950 p-6 shadow-2xl">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-blue-400/20 bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-200">
-                <FaCalendarAlt />
-                Multi-platform composer
-              </div>
-              <h1 className="text-4xl font-black tracking-tight">Create and schedule posts</h1>
-              <p className="mt-3 max-w-2xl text-slate-300">
-                Upload a video, configure platform details, preview how it looks, then schedule it for automated publishing.
-              </p>
-            </div>
-
+        <PageHeader
+          eyebrow={<Badge tone="primary"><FaCalendarAlt />Private Composer</Badge>}
+          title="Create and schedule posts"
+          description="Upload videos, tune captions, preview each platform, and publish through the integrations that are ready."
+          action={(
             <label className="group cursor-pointer rounded-2xl bg-blue-600 px-6 py-4 font-bold shadow-lg transition hover:bg-blue-500">
               <input
                 type="file"
@@ -321,8 +215,8 @@ export default function BatchScheduler() {
                 Add Videos
               </span>
             </label>
-          </div>
-        </section>
+          )}
+        />
 
         {message && (
           <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 text-blue-100">
@@ -332,26 +226,25 @@ export default function BatchScheduler() {
 
         <div className="grid gap-6 xl:grid-cols-[320px_1fr_420px]">
           <aside className="space-y-4">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
+            <Card>
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="font-bold">Queue</h2>
+                  <h2 className="font-black">Queue</h2>
                   <p className="text-sm text-slate-400">{items.length} videos · {scheduledCount} scheduled</p>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="success"
                   onClick={handleScheduleAll}
                   disabled={!items.length || isScheduling}
-                  className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                  className="px-3 py-2"
                 >
                   All
-                </button>
+                </Button>
               </div>
 
               {items.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">
-                  Add a video to start composing.
-                </div>
+                <EmptyState title="Queue is empty" description="Add videos to start composing your private publishing batch." />
               ) : (
                 <div className="space-y-3">
                   {items.map((item) => (
@@ -377,91 +270,78 @@ export default function BatchScheduler() {
                   ))}
                 </div>
               )}
-            </div>
+            </Card>
           </aside>
 
           <section className="space-y-5">
             {!activeItem ? (
-              <div className="flex min-h-[520px] items-center justify-center rounded-3xl border border-dashed border-slate-800 bg-slate-900/70 text-center text-slate-400">
-                <div>
-                  <FaCloudUploadAlt className="mx-auto mb-4 text-5xl text-slate-600" />
-                  <p className="text-lg font-semibold text-slate-300">No video selected</p>
-                  <p className="mt-1 text-sm">Upload a video to open the composer.</p>
-                </div>
+              <div className="flex min-h-[520px] items-center justify-center">
+                <EmptyState icon={<FaCloudUploadAlt />} title="No video selected" description="Upload a video to open the composer, previews, and scheduling controls." />
               </div>
             ) : (
               <>
-                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
+                <Card>
                   <div className="mb-5 flex items-start justify-between gap-4">
                     <div>
-                      <h2 className="text-xl font-bold">Post details</h2>
+                      <h2 className="text-xl font-black">Post details</h2>
                       <p className="text-sm text-slate-400">{activeItem.file.name}</p>
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="danger"
                       onClick={() => removeItem(activeItem.id)}
-                      className="rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-red-400 hover:text-red-300"
+                      className="px-3 py-2"
                     >
                       Remove
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="space-y-5">
-                    <label className="space-y-2 block">
-                      <span className="text-sm font-medium text-slate-300">Title</span>
-                      <input
+                    <Field label="Title" hint={`${activeItem.title.length}/100`}>
+                      <Input
                         value={activeItem.title}
                         maxLength={100}
                         onChange={(event) => updateItem(activeItem.id, { title: event.target.value })}
-                        className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
                       />
-                      <span className="text-xs text-slate-500">{activeItem.title.length}/100</span>
-                    </label>
+                    </Field>
 
-                    <label className="space-y-2 block">
-                      <span className="text-sm font-medium text-slate-300">Description / Caption</span>
-                      <textarea
+                    <Field label="Description / Caption" hint={`${activeItem.description.length}/5000`}>
+                      <Textarea
                         value={activeItem.description}
                         rows={5}
                         maxLength={5000}
                         onChange={(event) => updateItem(activeItem.id, { description: event.target.value })}
                         placeholder="Write your caption, hashtags, or video description..."
-                        className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
                       />
-                      <span className="text-xs text-slate-500">{activeItem.description.length}/5000</span>
-                    </label>
+                    </Field>
 
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <label className="space-y-2 block">
-                        <span className="text-sm font-medium text-slate-300">Schedule time</span>
-                        <input
+                      <Field label="Schedule time">
+                        <Input
                           type="datetime-local"
                           value={activeItem.scheduledAt}
                           onChange={(event) => updateItem(activeItem.id, { scheduledAt: event.target.value })}
-                          className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
                         />
-                      </label>
+                      </Field>
 
-                      <label className="space-y-2 block">
-                        <span className="text-sm font-medium text-slate-300">YouTube privacy</span>
-                        <select
+                      <Field label="YouTube privacy">
+                        <Select
                           value={activeItem.privacyStatus}
                           onChange={(event) =>
                             updateItem(activeItem.id, { privacyStatus: event.target.value as PrivacyStatus })
                           }
-                          className="w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition focus:border-blue-400"
                         >
                           <option value="private">Private</option>
                           <option value="unlisted">Unlisted</option>
                           <option value="public">Public</option>
-                        </select>
-                      </label>
+                        </Select>
+                      </Field>
                     </div>
                   </div>
-                </div>
+                </Card>
 
-                <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
-                  <h2 className="mb-4 text-xl font-bold">Platforms</h2>
+                <Card>
+                  <h2 className="mb-4 text-xl font-black">Platforms</h2>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {platforms.map((platform) => {
                       const selected = activeItem.selectedPlatforms.includes(platform.id);
@@ -477,24 +357,24 @@ export default function BatchScheduler() {
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${platformClasses(platform.id)}`}>
-                              {platformIcon(platform.id)}
+                            <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${platform.iconClassName}`}>
+                              {platform.icon}
                             </span>
                             <div>
                               <p className="font-semibold">{platform.name}</p>
-                              <p className="text-xs text-slate-400">{platform.description}</p>
+                              <p className="text-xs text-slate-400">{platform.schedulerSummary}</p>
                             </div>
                           </div>
-                          {!platform.active && (
+                          {!platform.canAutoPublish && (
                             <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                              Preview enabled. Auto-publish worker not active yet.
+                              Preview enabled. Auto-publish worker is not active yet.
                             </p>
                           )}
                         </button>
                       );
                     })}
                   </div>
-                </div>
+                </Card>
 
                 {activeItem.error && (
                   <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
@@ -503,24 +383,25 @@ export default function BatchScheduler() {
                   </div>
                 )}
 
-                <button
+                <Button
                   type="button"
+                  variant="success"
                   onClick={handleScheduleSelected}
                   disabled={isScheduling}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-emerald-600 px-6 py-4 text-lg font-bold text-white shadow-lg transition hover:bg-emerald-500 disabled:opacity-50"
+                  className="w-full px-6 py-4 text-lg"
                 >
                   {isScheduling ? <FaSpinner className="animate-spin" /> : <FaRocket />}
                   Schedule Selected Post
-                </button>
+                </Button>
               </>
             )}
           </section>
 
           <aside className="xl:sticky xl:top-6 xl:self-start">
-            <div className="rounded-3xl border border-slate-800 bg-slate-900 p-5">
+            <Card>
               <div className="mb-4 flex items-center gap-2">
                 <FaPlay className="text-blue-300" />
-                <h2 className="text-xl font-bold">Live Preview</h2>
+                <h2 className="text-xl font-black">Live Preview</h2>
               </div>
 
               {activeItem ? (
@@ -530,7 +411,7 @@ export default function BatchScheduler() {
                       key={platform.id}
                       platform={platform.id}
                       name={platform.name}
-                      label={platform.label}
+                      label={platform.contentType}
                       selected={activeItem.selectedPlatforms.includes(platform.id)}
                       title={activeItem.title}
                       description={activeItem.description}
@@ -543,7 +424,7 @@ export default function BatchScheduler() {
                   Preview appears after upload.
                 </div>
               )}
-            </div>
+            </Card>
           </aside>
         </div>
       </div>
@@ -552,17 +433,17 @@ export default function BatchScheduler() {
 }
 
 function StatusPill({ status }: { status: BatchItem['status'] }) {
-  const config = {
-    draft: 'bg-slate-700 text-slate-200',
-    uploading: 'bg-blue-500/20 text-blue-200',
-    scheduled: 'bg-emerald-500/20 text-emerald-200',
-    error: 'bg-red-500/20 text-red-200',
-  }[status];
+  const tone = {
+    draft: 'default',
+    uploading: 'primary',
+    scheduled: 'success',
+    error: 'danger',
+  }[status] as 'default' | 'primary' | 'success' | 'danger';
 
   return (
-    <span className={`mt-2 inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${config}`}>
+    <Badge tone={tone} className="mt-2 capitalize">
       {status}
-    </span>
+    </Badge>
   );
 }
 
@@ -590,8 +471,8 @@ function PlatformPreview({
       }`}
     >
       <div className="flex items-center gap-2 border-b border-slate-800 px-3 py-2">
-        <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm ${platformClasses(platform)}`}>
-          {platformIcon(platform)}
+        <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm ${platformMap[platform].iconClassName}`}>
+          {platformMap[platform].icon}
         </span>
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{name}</p>

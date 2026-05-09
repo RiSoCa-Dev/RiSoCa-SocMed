@@ -7,11 +7,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#3b82f6',
+        primary: {
+          DEFAULT: '#3b82f6',
+          soft: '#60a5fa',
+        },
         dark: {
-          bg: '#0f172a',
-          card: '#1e293b',
+          bg: '#020617',
+          panel: '#0f172a',
+          card: '#111827',
         }
+      },
+      boxShadow: {
+        glow: '0 20px 80px rgba(37, 99, 235, 0.2)',
       }
     },
   },

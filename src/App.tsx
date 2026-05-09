@@ -1,16 +1,16 @@
 import AppShell from './components/AppShell';
 import LoginPage from './components/LoginPage';
 import LegalPage from './pages/LegalPage';
-import { AuthProvider, useAuth } from './lib/auth';
+import { AuthProvider } from './lib/auth';
+import { useAuth } from './lib/useAuth';
 
 function AppContent() {
   const path = window.location.pathname;
+  const { user, loading, accessDenied, ownerEmail } = useAuth();
 
   if (path === '/privacy') return <LegalPage type="privacy" />;
   if (path === '/terms') return <LegalPage type="terms" />;
   if (path === '/data-deletion') return <LegalPage type="data-deletion" />;
-
-  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -23,7 +23,11 @@ function AppContent() {
     );
   }
 
-  return user ? <AppShell /> : <LoginPage />;
+  if (accessDenied) {
+    return <LoginPage accessDenied ownerEmail={ownerEmail} />;
+  }
+
+  return user ? <AppShell /> : <LoginPage ownerEmail={ownerEmail} />;
 }
 
 export default function App() {

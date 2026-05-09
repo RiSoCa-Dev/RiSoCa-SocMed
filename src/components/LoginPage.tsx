@@ -1,8 +1,16 @@
 import { useState } from 'react';
-import { FaGoogle, FaCalendarAlt, FaYoutube, FaFacebookF, FaInstagram } from 'react-icons/fa';
-import { useAuth } from '../lib/auth';
+import { FaGoogle, FaCalendarAlt, FaLock, FaYoutube } from 'react-icons/fa';
+import { useAuth } from '../lib/useAuth';
+import { platforms } from '../lib/platforms';
+import { Badge, Button } from './ui';
 
-export default function LoginPage() {
+export default function LoginPage({
+  accessDenied = false,
+  ownerEmail,
+}: {
+  accessDenied?: boolean;
+  ownerEmail?: string | null;
+}) {
   const { signInWithGoogle } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,9 +28,9 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
+    <main className="min-h-screen bg-transparent text-white">
       <div className="grid min-h-screen lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="relative hidden overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 p-10 lg:block">
+        <section className="relative hidden overflow-hidden p-10 lg:block">
           <div className="absolute left-16 top-16 h-72 w-72 rounded-full bg-blue-600/20 blur-3xl" />
           <div className="absolute bottom-16 right-16 h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
 
@@ -38,33 +46,22 @@ export default function LoginPage() {
             </div>
 
             <div className="max-w-2xl">
-              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
-                <FaCalendarAlt />
-                Plan once. Publish everywhere.
-              </div>
+              <Badge tone="primary"><FaLock />Private owner workspace</Badge>
               <h1 className="text-5xl font-black leading-tight tracking-tight">
-                Schedule videos to your connected channels.
+                Your personal social publishing command center.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-slate-300">
-                Connect YouTube, Facebook Pages, and Instagram accounts, then manage uploads from one clean scheduler.
+                Sign in with the configured owner account to schedule videos, preview every platform, and manage integrations without public access.
               </p>
 
-              <div className="mt-10 grid max-w-xl gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <FaYoutube className="text-2xl text-red-400" />
-                  <p className="mt-3 font-semibold">YouTube</p>
-                  <p className="text-sm text-slate-400">Auto upload tested</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <FaFacebookF className="text-2xl text-blue-400" />
-                  <p className="mt-3 font-semibold">Facebook</p>
-                  <p className="text-sm text-slate-400">Pages OAuth</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <FaInstagram className="text-2xl text-pink-400" />
-                  <p className="mt-3 font-semibold">Instagram</p>
-                  <p className="text-sm text-slate-400">Professional accounts</p>
-                </div>
+              <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {platforms.slice(0, 6).map((platform) => (
+                  <div key={platform.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${platform.iconClassName}`}>{platform.icon}</span>
+                    <p className="mt-3 font-semibold">{platform.shortName}</p>
+                    <p className="text-sm text-slate-400">{platform.schedulerSummary}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -72,15 +69,27 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <section className="flex items-center justify-center bg-slate-50 p-6 text-slate-900">
-          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-xl">
+        <section className="flex items-center justify-center bg-slate-50 p-6 text-slate-900 lg:bg-white/95">
+          <div className="w-full max-w-md rounded-[2rem] border border-slate-200 bg-white p-8 shadow-2xl shadow-slate-200">
             <div className="mb-8 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-900 text-xl font-black text-white">
-                R
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-400 text-xl font-black text-white shadow-lg shadow-blue-200">
+                <FaYoutube />
               </div>
-              <h2 className="text-3xl font-black">Welcome back</h2>
-              <p className="mt-2 text-slate-600">Sign in to manage your scheduler.</p>
+              <h2 className="text-3xl font-black">Owner sign in</h2>
+              <p className="mt-2 text-slate-600">
+                {ownerEmail ? `Only ${ownerEmail} can open this dashboard.` : 'Set VITE_OWNER_EMAIL to lock this dashboard to your email.'}
+              </p>
             </div>
+
+            {accessDenied && (
+              <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                This dashboard is private. Sign in with
+                {' '}
+                {ownerEmail || 'the configured owner email'}
+                {' '}
+                to continue.
+              </div>
+            )}
 
             {error && (
               <div className="mb-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -88,14 +97,22 @@ export default function LoginPage() {
               </div>
             )}
 
-            <button
+            <Button
               onClick={handleGoogleLogin}
               disabled={busy}
-              className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 px-5 py-4 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full bg-slate-950 px-5 py-4 hover:bg-slate-800"
             >
               <FaGoogle />
               {busy ? 'Opening Google...' : 'Continue with Google'}
-            </button>
+            </Button>
+
+            <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              <div className="mb-2 flex items-center gap-2 font-bold text-slate-900">
+                <FaCalendarAlt />
+                Private mode
+              </div>
+              No public signup, team invites, or shared workspace. This is built for your own publishing accounts.
+            </div>
 
             <div className="mt-6 text-center text-xs leading-5 text-slate-500">
               <p>By continuing, you access the private RiSoCa Scheduler dashboard.</p>

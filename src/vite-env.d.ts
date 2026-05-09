@@ -10,6 +10,7 @@ declare module 'react-icons/fa' {
   export const FaGoogle: ComponentType<SVGProps<SVGSVGElement>>;
   export const FaInstagram: ComponentType<SVGProps<SVGSVGElement>>;
   export const FaLinkedinIn: ComponentType<SVGProps<SVGSVGElement>>;
+  export const FaLock: ComponentType<SVGProps<SVGSVGElement>>;
   export const FaPinterestP: ComponentType<SVGProps<SVGSVGElement>>;
   export const FaPlay: ComponentType<SVGProps<SVGSVGElement>>;
   export const FaPlug: ComponentType<SVGProps<SVGSVGElement>>;
