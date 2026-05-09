@@ -1,6 +1,18 @@
 {
+  "framework": "vite",
+  "installCommand": "npm ci",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "vite",
-  "installCommand": "npm install"
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/process-uploads",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
