@@ -9,9 +9,9 @@ type ScheduleYoutubeVideoInput = {
   privacyStatus?: 'private' | 'unlisted' | 'public';
 };
 
-type CreateUploadSessionResponse = {
-  uploadUrl: string;
+type ScheduleYoutubeVideoResponse = {
   scheduledPostId: string;
+  youtubeVideoId?: string | null;
 };
 
 export async function scheduleYoutubeVideo({
@@ -23,104 +23,43 @@ export async function scheduleYoutubeVideo({
 }: ScheduleYoutubeVideoInput) {
   const publishAt = scheduledAt.toISOString();
   const headers = await getOwnerFunctionHeaders();
+  const formData = new FormData();
 
-  const sessionResponse = await fetch(
+  formData.set('file', file);
+  formData.set('title', title);
+  formData.set('description', description);
+  formData.set('publishAt', publishAt);
+  formData.set('privacyStatus', privacyStatus);
+  formData.set('mimeType', file.type || 'video/mp4');
+
+  const uploadResponse = await fetch(
     getFunctionUrl('youtube-create-upload-session'),
     {
       method: 'POST',
-      headers,
-      body: JSON.stringify({
-        title,
-        description,
-        publishAt,
-        fileSize: file.size,
-        mimeType: file.type || 'video/mp4',
-        privacyStatus,
-      }),
+      headers: withFormDataHeaders(headers),
+      body: formData,
     }
   );
 
-  const sessionData = (await sessionResponse.json()) as
-    | CreateUploadSessionResponse
+  const uploadData = (await uploadResponse.json()) as
+    | ScheduleYoutubeVideoResponse
     | { error: string };
 
-  if (!sessionResponse.ok || 'error' in sessionData) {
+  if (!uploadResponse.ok || 'error' in uploadData) {
     throw new Error(
-      'Could not create YouTube upload session: ' +
-        ('error' in sessionData ? sessionData.error : sessionResponse.statusText)
+      'Could not upload YouTube video: ' +
+        ('error' in uploadData ? uploadData.error : uploadResponse.statusText)
     );
   }
-
-  const uploadResponse = await fetch(sessionData.uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': file.type || 'video/mp4',
-      'Content-Length': String(file.size),
-    },
-    body: file,
-  });
-
-  const uploadResult = await uploadResponse.json().catch(() => null);
-
-  if (!uploadResponse.ok) {
-    await completeYoutubeUpload({
-      headers,
-      scheduledPostId: sessionData.scheduledPostId,
-      ok: false,
-      error: uploadResult,
-      privacyStatus,
-    });
-
-    throw new Error(
-      'YouTube upload failed: ' + JSON.stringify(uploadResult)
-    );
-  }
-
-  await completeYoutubeUpload({
-    headers,
-    scheduledPostId: sessionData.scheduledPostId,
-    ok: true,
-    youtubeVideoId: uploadResult?.id ?? null,
-    privacyStatus,
-  });
 
   return {
-    scheduledPostId: sessionData.scheduledPostId,
-    youtubeVideoId: uploadResult?.id,
+    scheduledPostId: uploadData.scheduledPostId,
+    youtubeVideoId: uploadData.youtubeVideoId,
   };
 }
 
-async function completeYoutubeUpload({
-  headers,
-  scheduledPostId,
-  ok,
-  youtubeVideoId,
-  error,
-  privacyStatus,
-}: {
-  headers: HeadersInit;
-  scheduledPostId: string;
-  ok: boolean;
-  youtubeVideoId?: string | null;
-  error?: unknown;
-  privacyStatus: 'private' | 'unlisted' | 'public';
-}) {
-  const response = await fetch(getFunctionUrl('youtube-complete-upload'), {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      scheduledPostId,
-      ok,
-      youtubeVideoId,
-      error,
-      privacyStatus,
-    }),
-  });
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new Error(
-      'Could not update upload status: ' + JSON.stringify(data)
-    );
-  }
+function withFormDataHeaders(headers: HeadersInit) {
+  const nextHeaders = new Headers(headers);
+  nextHeaders.delete('Content-Type');
+  return nextHeaders;
 }

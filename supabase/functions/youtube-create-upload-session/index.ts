@@ -25,10 +25,22 @@ Deno.serve(async (req) => {
   const owner = await requireOwner(req);
   if ("error" in owner) return owner.error;
 
-  const body = (await req.json().catch(() => null)) as RequestBody | null;
+  const formData = await req.formData().catch(() => null);
+  const fileValue = formData?.get("file");
+  const file = fileValue instanceof File ? fileValue : null;
+  const body = formData
+    ? {
+        title: String(formData.get("title") || ""),
+        description: String(formData.get("description") || ""),
+        publishAt: String(formData.get("publishAt") || ""),
+        fileSize: file?.size || 0,
+        mimeType: String(formData.get("mimeType") || file?.type || "video/mp4"),
+        privacyStatus: String(formData.get("privacyStatus") || "private") as RequestBody["privacyStatus"],
+      }
+    : null;
 
-  if (!body) {
-    return json({ error: "Invalid JSON body" }, 400);
+  if (!body || !file) {
+    return json({ error: "Video file and upload metadata are required" }, 400);
   }
 
   if (!body.title?.trim()) {
@@ -173,9 +185,68 @@ Deno.serve(async (req) => {
     );
   }
 
+  const youtubeUploadRes = await fetch(uploadUrl, {
+    method: "PUT",
+    headers: {
+      "Content-Type": body.mimeType || "video/mp4",
+      "Content-Length": String(body.fileSize),
+    },
+    body: file.stream(),
+  });
+
+  const uploadResult = await youtubeUploadRes.json().catch(async () => {
+    const text = await youtubeUploadRes.text().catch(() => "");
+    return text ? { error: text } : null;
+  });
+
+  if (!youtubeUploadRes.ok) {
+    await owner.admin
+      .from("scheduled_posts")
+      .update({
+        status: "failed",
+        upload_error: JSON.stringify(uploadResult),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", scheduledPost.id);
+
+    await owner.admin.from("publish_logs").insert({
+      scheduled_post_id: scheduledPost.id,
+      platform: "youtube",
+      status: "failed",
+      message: "YouTube upload failed.",
+      metadata: {
+        privacyStatus,
+        error: uploadResult,
+      },
+    });
+
+    return json({ error: "YouTube upload failed: " + JSON.stringify(uploadResult) }, 500);
+  }
+
+  await owner.admin
+    .from("scheduled_posts")
+    .update({
+      status: "uploaded",
+      youtube_video_id: uploadResult?.id ?? null,
+      uploaded_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", scheduledPost.id);
+
+  await owner.admin.from("publish_logs").insert({
+    scheduled_post_id: scheduledPost.id,
+    platform: "youtube",
+    status: "uploaded",
+    message: "Video uploaded to YouTube from the protected Edge Function.",
+    metadata: {
+      youtubeVideoId: uploadResult?.id ?? null,
+      privacyStatus,
+    },
+  });
+
   return json({
-    uploadUrl,
     scheduledPostId: scheduledPost.id,
+    youtubeVideoId: uploadResult?.id ?? null,
   });
 });
 
