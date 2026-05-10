@@ -129,16 +129,24 @@ Deno.serve(async (req) => {
     );
   }
 
+  const youtubeStatus =
+    privacyStatus === "public"
+      ? {
+          privacyStatus: "private",
+          publishAt: publishDate.toISOString(),
+          selfDeclaredMadeForKids: false,
+        }
+      : {
+          privacyStatus,
+          selfDeclaredMadeForKids: false,
+        };
+
   const metadata = {
     snippet: {
       title: body.title.trim().slice(0, 100),
       description: body.description || "",
     },
-    status: {
-      privacyStatus,
-      publishAt: publishDate.toISOString(),
-      selfDeclaredMadeForKids: false,
-    },
+    status: youtubeStatus,
   };
 
   const uploadSessionRes = await fetch(

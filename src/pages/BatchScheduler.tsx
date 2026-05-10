@@ -69,7 +69,7 @@ export default function BatchScheduler() {
         title: safeTitle(file),
         description: '',
         scheduledAt: defaultScheduleDate(),
-        privacyStatus: 'private',
+        privacyStatus: 'public',
         selectedPlatforms: ['youtube'],
         status: 'draft',
       }));
@@ -328,16 +328,16 @@ export default function BatchScheduler() {
                         />
                       </Field>
 
-                      <Field label="YouTube privacy">
+                      <Field label="YouTube visibility">
                         <Select
                           value={activeItem.privacyStatus}
                           onChange={(event) =>
                             updateItem(activeItem.id, { privacyStatus: event.target.value as PrivacyStatus })
                           }
                         >
-                          <option value="private">Private</option>
-                          <option value="unlisted">Unlisted</option>
-                          <option value="public">Public</option>
+                          <option value="public">Scheduled public release</option>
+                          <option value="private">Upload private now</option>
+                          <option value="unlisted">Upload unlisted now</option>
                         </Select>
                       </Field>
                     </div>
