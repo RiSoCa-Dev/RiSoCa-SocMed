@@ -9,6 +9,8 @@ type RequestBody = {
   fileSize: number;
   mimeType: string;
   privacyStatus?: "private" | "unlisted" | "public";
+  tags?: string[];
+  categoryId?: string;
 };
 
 Deno.serve(async (req) => {
@@ -36,6 +38,8 @@ Deno.serve(async (req) => {
         fileSize: file?.size || 0,
         mimeType: String(formData.get("mimeType") || file?.type || "video/mp4"),
         privacyStatus: String(formData.get("privacyStatus") || "private") as RequestBody["privacyStatus"],
+        tags: parseTags(String(formData.get("tags") || "")),
+        categoryId: String(formData.get("categoryId") || "22"),
       }
     : null;
 
@@ -113,6 +117,14 @@ Deno.serve(async (req) => {
       scheduled_at: publishDate.toISOString(),
       status: "uploading",
       privacy_status: privacyStatus,
+      platform_payload: {
+        youtube: {
+          tags: body.tags || [],
+          categoryId: body.categoryId || "22",
+          defaultLanguage: "en",
+          license: "youtube",
+        },
+      },
       upload_error: null,
     })
     .select("id")
@@ -135,17 +147,29 @@ Deno.serve(async (req) => {
           privacyStatus: "private",
           publishAt: publishDate.toISOString(),
           selfDeclaredMadeForKids: false,
+          license: "youtube",
+          embeddable: true,
+          publicStatsViewable: true,
         }
       : {
           privacyStatus,
           selfDeclaredMadeForKids: false,
+          license: "youtube",
+          embeddable: true,
+          publicStatsViewable: true,
         };
 
-  const metadata = {
-    snippet: {
-      title: body.title.trim().slice(0, 100),
-      description: body.description || "",
-    },
+  const snippet: Record<string, unknown> = {
+    title: body.title.trim().slice(0, 100),
+    description: body.description || "",
+    categoryId: body.categoryId || "22",
+    defaultLanguage: "en",
+  };
+
+  if (body.tags?.length) snippet.tags = body.tags;
+
+  const metadata: Record<string, unknown> = {
+    snippet,
     status: youtubeStatus,
   };
 
@@ -224,6 +248,8 @@ Deno.serve(async (req) => {
       message: "YouTube upload failed.",
       metadata: {
         privacyStatus,
+        tags: body.tags || [],
+        categoryId: body.categoryId || "22",
         error: uploadResult,
       },
     });
@@ -249,6 +275,8 @@ Deno.serve(async (req) => {
     metadata: {
       youtubeVideoId: uploadResult?.id ?? null,
       privacyStatus,
+      tags: body.tags || [],
+      categoryId: body.categoryId || "22",
     },
   });
 
@@ -288,3 +316,12 @@ async function refreshGoogleAccessToken({
 
   return data.access_token as string;
 }
+
+function parseTags(value: string) {
+  return value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+    .slice(0, 30);
+}
+

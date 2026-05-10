@@ -19,7 +19,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={cx('rounded-3xl border border-slate-800/80 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20 backdrop-blur', className)}>
+    <section className={cx('rounded-xl border border-slate-800/80 bg-slate-900/80 p-3 shadow-md shadow-slate-950/10 backdrop-blur', className)}>
       {children}
     </section>
   );
@@ -43,7 +43,7 @@ export function Button({
 
   return (
     <button
-      className={cx('inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50', variants[variant], className)}
+      className={cx('inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-bold transition disabled:cursor-not-allowed disabled:opacity-50', variants[variant], className)}
       {...props}
     >
       {children}
@@ -61,7 +61,7 @@ export function Badge({
   className?: string;
 }) {
   return (
-    <span className={cx('inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-bold', toneClasses[tone], className)}>
+    <span className={cx('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold', toneClasses[tone], className)}>
       {children}
     </span>
   );
@@ -107,12 +107,12 @@ export function StatCard({
 }) {
   return (
     <Card>
-      <div className={cx('mb-4 flex h-11 w-11 items-center justify-center rounded-2xl border text-lg', toneClasses[tone])}>
+      <div className={cx('mb-2 flex h-8 w-8 items-center justify-center rounded-lg border text-sm', toneClasses[tone])}>
         {icon}
       </div>
-      <p className="text-3xl font-black text-white">{value}</p>
-      <p className="mt-1 text-sm font-medium text-slate-300">{label}</p>
-      {helper && <p className="mt-2 text-xs text-slate-500">{helper}</p>}
+      <p className="text-xl font-black text-white">{value}</p>
+      <p className="mt-0.5 text-[11px] font-medium text-slate-300">{label}</p>
+      {helper && <p className="mt-1.5 text-[10px] text-slate-500">{helper}</p>}
     </Card>
   );
 }
@@ -129,10 +129,10 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-dashed border-slate-700 bg-slate-950/50 p-8 text-center">
-      {icon && <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-900 text-xl text-slate-400">{icon}</div>}
-      <h3 className="text-lg font-bold text-slate-100">{title}</h3>
-      <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-400">{description}</p>
+    <div className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-4 text-center">
+      {icon && <div className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-base text-slate-400">{icon}</div>}
+      <h3 className="text-sm font-bold text-slate-100">{title}</h3>
+      <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-400">{description}</p>
       {action && <div className="mt-5">{action}</div>}
     </div>
   );
@@ -148,16 +148,16 @@ export function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="block space-y-2">
-      <span className="text-sm font-bold text-slate-300">{label}</span>
+    <label className="block space-y-1">
+      <span className="text-[11px] font-bold text-slate-300">{label}</span>
       {children}
-      {hint && <span className="block text-xs text-slate-500">{hint}</span>}
+      {hint && <span className="block text-[10px] text-slate-500">{hint}</span>}
     </label>
   );
 }
 
 const inputClassName =
-  'w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10';
+  'w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-xs text-white outline-none transition placeholder:text-slate-600 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10';
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cx(inputClassName, className)} {...props} />;

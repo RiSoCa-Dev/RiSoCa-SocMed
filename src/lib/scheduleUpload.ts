@@ -7,6 +7,8 @@ type ScheduleYoutubeVideoInput = {
   description: string;
   scheduledAt: Date;
   privacyStatus?: 'private' | 'unlisted' | 'public';
+  tags?: string;
+  categoryId?: string;
 };
 
 type ScheduleYoutubeVideoResponse = {
@@ -20,6 +22,8 @@ export async function scheduleYoutubeVideo({
   description,
   scheduledAt,
   privacyStatus = 'private',
+  tags = '',
+  categoryId = '22',
 }: ScheduleYoutubeVideoInput) {
   const publishAt = scheduledAt.toISOString();
   const headers = await getOwnerFunctionHeaders();
@@ -31,6 +35,8 @@ export async function scheduleYoutubeVideo({
   formData.set('publishAt', publishAt);
   formData.set('privacyStatus', privacyStatus);
   formData.set('mimeType', file.type || 'video/mp4');
+  formData.set('tags', tags);
+  formData.set('categoryId', categoryId);
 
   const uploadResponse = await fetch(
     getFunctionUrl('youtube-create-upload-session'),

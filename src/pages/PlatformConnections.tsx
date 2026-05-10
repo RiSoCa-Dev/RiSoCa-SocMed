@@ -4,6 +4,7 @@ import { supabaseUrl } from "../lib/supabase";
 import { getOwnerFunctionHeaders } from "../lib/functionAuth";
 import { platforms, platformStatusLabel, type PlatformConfig, type PlatformKey } from "../lib/platforms";
 import { Badge, Button, Card, PageHeader } from "../components/ui";
+import { clearConnectionsCache, getCachedConnections, setCachedConnections } from "../lib/appCache";
 
 type Account = {
   platform: string;
@@ -31,13 +32,15 @@ export default function PlatformConnections() {
   const error = params.get("error");
   const metaConnected = useMemo(() => accounts.facebook.length > 0 || accounts.instagram.length > 0, [accounts]);
 
-  async function loadStatus() {
+  async function refreshStatus() {
     setLoading(true);
     try {
       const headers = await getOwnerFunctionHeaders();
       const res = await fetch(functionUrl("platform-connections-status"), { headers });
       const data = (await res.json()) as Partial<StatusResponse>;
-      setAccounts({ ...emptyStatus, ...(data.accounts || {}) });
+      const nextAccounts = { ...emptyStatus, ...(data.accounts || {}) };
+      setAccounts(nextAccounts);
+      setCachedConnections(nextAccounts);
     } catch (err) {
       console.error(err);
       setAccounts(emptyStatus);
@@ -46,7 +49,30 @@ export default function PlatformConnections() {
     }
   }
 
-  useEffect(() => { void loadStatus(); }, []);
+  useEffect(() => {
+    const cachedAccounts = getCachedConnections();
+
+    if (cachedAccounts) {
+      setAccounts(cachedAccounts);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    getOwnerFunctionHeaders()
+      .then((headers) => fetch(functionUrl("platform-connections-status"), { headers }))
+      .then(async (res) => {
+        const data = (await res.json()) as Partial<StatusResponse>;
+        const nextAccounts = { ...emptyStatus, ...(data.accounts || {}) };
+        setAccounts(nextAccounts);
+        setCachedConnections(nextAccounts);
+      })
+      .catch((err) => {
+        console.error(err);
+        setAccounts(emptyStatus);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   async function connect(startFunction: string) {
     setBusyPlatform(startFunction);
@@ -74,7 +100,8 @@ export default function PlatformConnections() {
     try {
       const headers = await getOwnerFunctionHeaders();
       await fetch(functionUrl("platform-disconnect"), { method: "POST", headers, body: JSON.stringify({ platform }) });
-      await loadStatus();
+      clearConnectionsCache();
+      await refreshStatus();
     } finally {
       setBusyPlatform(null);
     }

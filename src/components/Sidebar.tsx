@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
-import { FaCalendarAlt, FaLock, FaPlug, FaSignOutAlt, FaThLarge } from 'react-icons/fa';
+import { FaCalendarAlt, FaPlug, FaSignOutAlt, FaThLarge } from 'react-icons/fa';
 import { useAuth } from '../lib/useAuth';
-import { Badge, Button } from './ui';
+import { Button } from './ui';
 import { cx } from '../lib/styles';
 
 const links = [
@@ -12,32 +12,21 @@ const links = [
 
 export default function Sidebar() {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
 
   return (
     <>
-      <aside className="hidden h-screen w-72 shrink-0 flex-col border-r border-white/10 bg-slate-950/80 text-white backdrop-blur-xl lg:flex">
+      <aside className="hidden h-screen w-56 shrink-0 flex-col border-r border-white/10 bg-slate-950/80 text-white backdrop-blur-xl lg:flex">
         <BrandBlock />
 
-        <nav className="flex-1 space-y-2 p-4">
+        <nav className="flex-1 space-y-1.5 p-3">
           {links.map((link) => {
             const active = location.pathname === link.to;
             return <NavLink key={link.to} {...link} active={active} />;
           })}
         </nav>
 
-        <div className="border-t border-white/10 p-4">
-          <div className="mb-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-3">
-            <div className="mb-2 flex items-center gap-2">
-              <Badge tone="success">
-                <FaLock />
-                Owner only
-              </Badge>
-            </div>
-            <p className="truncate text-sm font-semibold text-slate-100">{user?.email}</p>
-            <p className="text-xs text-slate-500">Private Google session</p>
-          </div>
-
+        <div className="border-t border-white/10 p-3">
           <Button
             type="button"
             variant="secondary"
@@ -76,18 +65,14 @@ export default function Sidebar() {
 
 function BrandBlock() {
   return (
-    <div className="border-b border-white/10 p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-400 text-lg font-black shadow-glow">R</div>
+    <div className="border-b border-white/10 p-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-black shadow-glow">R</div>
           <div>
-            <p className="text-lg font-black tracking-tight">RiSoCa</p>
-            <p className="text-xs font-medium text-slate-400">Private scheduler</p>
+            <p className="text-base font-black tracking-tight">RiSoCa</p>
+            <p className="text-[11px] font-medium text-slate-400">Private scheduler</p>
           </div>
         </div>
-      <div className="mt-5 rounded-2xl border border-blue-400/20 bg-blue-500/10 p-4">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-blue-200">Workspace</p>
-        <p className="mt-2 text-sm leading-6 text-slate-300">Plan, preview, and publish from one private control room.</p>
-      </div>
     </div>
   );
 }
@@ -107,13 +92,13 @@ function NavLink({
     <Link
       to={to}
       className={cx(
-        'flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition',
+        'flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-bold transition',
         active
           ? 'bg-blue-600 text-white shadow-lg shadow-blue-950/30'
           : 'text-slate-300 hover:bg-slate-900 hover:text-white'
       )}
     >
-      <span className="text-base">{icon}</span>
+      <span className="text-sm">{icon}</span>
       {label}
     </Link>
   );
