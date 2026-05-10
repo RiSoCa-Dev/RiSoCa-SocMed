@@ -28,7 +28,7 @@ type BatchItem = {
 };
 
 function defaultScheduleDate() {
-  const date = new Date(Date.now() + 10 * 60 * 1000);
+  const date = new Date(Date.now() + 30 * 60 * 1000);
   date.setSeconds(0, 0);
   return date.toISOString().slice(0, 16);
 }
@@ -125,6 +125,10 @@ export default function BatchScheduler() {
     const scheduledAt = new Date(item.scheduledAt);
     if (Number.isNaN(scheduledAt.getTime())) {
       throw new Error('Valid schedule date/time is required.');
+    }
+
+    if (scheduledAt.getTime() <= Date.now() + 20 * 60 * 1000) {
+      throw new Error('YouTube scheduled uploads need a publish time at least 20 minutes from now.');
     }
 
     await scheduleYoutubeVideo({

@@ -61,9 +61,9 @@ Deno.serve(async (req) => {
     return json({ error: "Invalid publishAt date" }, 400);
   }
 
-  if (publishDate.getTime() <= Date.now() + 60_000) {
+  if (publishDate.getTime() <= Date.now() + 20 * 60_000) {
     return json(
-      { error: "Schedule time must be at least 1 minute in the future" },
+      { error: "YouTube scheduled uploads need a publish time at least 20 minutes from now." },
       400
     );
   }
